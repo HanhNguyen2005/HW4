@@ -7,6 +7,7 @@
 #include <fstream> // to output to the HTML file easier
 #include <string> // due
 #include <unordered_map> // to track the time points when there are X num of cars present
+#include <ctime>
 
 
 
@@ -235,7 +236,12 @@ int main(int argc, char* argv[]) {
 
 	std::cout << "Computing crash probabilities from database..." << std::endl;
 	// Build the crash probability table
+	time_t db_start = time(0);
 	const std::unordered_map<std::string, double> crash_prob_map = build_crash_prob_map();
+	time_t db_end = time(0);
+	std::cout << "Database time: " << difftime(db_end, db_start) << " seconds\n";
+	// output: 13 seconds
+
 	for(const auto& pair : crash_prob_map){
 		std::cout << "Day: " << pair.first << ", probability of a crash: " << pair.second << std::endl;
 	}
@@ -248,11 +254,21 @@ int main(int argc, char* argv[]) {
 	int num_cars = 0; // number of cars (intially 0)
 	int crash_count = 0;
 	int crash_timer = 0; // cool-off period of a crash
+
+	// Hotspot: this prints and flushes progress every time
+	// Fix: only print when the percentage changes
+	int prev_percent = -1;
 	for(TimeCode t = TimeCode(); t < dur; t = t + TimeCode(0, 0, 1)){
 		int progress = percentage(t.GetTimeCodeAsSeconds(), dur.GetTimeCodeAsSeconds());
-		std::cout << "\r" << progress << "%" << std::flush;
+		if (progress != prev_percent){
+			std::cout << "\r" << progress << "%" << std::flush;
+			prev_percent = progress;
+		}
 
-		ALL();
+
+		// Remove ALL() to get rid of repeated work
+		// because this function runs the entire TimeCode test inside the traffic loop.
+		// ALL();
 
 		// --- New Cars Show Up (maybe) ---
 		int num_new_cars = poisson(new_car_rate);
@@ -305,18 +321,26 @@ int main(int argc, char* argv[]) {
 	// Find the times at which certain amount of cars are present
 	std::cout << "Computing sample statistics..." << std::endl;
 	std::unordered_map<int, std::vector<TimeCode>> count_times;
+	time_t stats_start = time(0);
+
+	// Hotspot: this prints and flushes progress every time
+	// Fix: only print when the percentage changes
+	prev_percent = -1;
 	for(size_t i = 0; i < data.size(); i++){
 		int progress = percentage(i, data.size());
-		std::cout << "\r" << progress << "%" << std::flush;
-		data_point_pair cur = data[i];
-		if(count_times.find(cur.num_cars) != count_times.end()){
-			std::vector<TimeCode> times_list = count_times[cur.num_cars];
-			times_list.push_back(cur.t);
-			count_times[cur.num_cars] = times_list;
-		} else {
-			count_times[cur.num_cars] = std::vector<TimeCode>{cur.t};
+		if(progress != prev_percent){
+			std::cout << "\r" << progress << "%" << std::flush;
+			prev_percent = progress;
 		}
+		data_point_pair cur = data[i];
+
+	// Speed up:
+	count_times[cur.num_cars].push_back(cur.t);
 	}
+	
+	time_t stats_end = time(0);
+	std::cout << "Statistics time: " << difftime(stats_end, stats_start) << " seconds\n";
+
 	std::cout << "\n---Simulation Finished---" << std::endl;
 
 

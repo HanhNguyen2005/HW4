@@ -51,25 +51,18 @@ BigInteger::BigInteger(int x){
 }
 
 
+// Hotspot
+// Fix: remove the outer loop
 BigInteger::BigInteger(string str){
-
-	int l = str.length();
-
-	for(int i = 0; i < l; i++){
-		digits->clear();
-		//cout << "digits: " << vec_to_string(*digits) << endl;
-
-
-		size_t idx = 0;
-		if(str.at(0) == '-'){
-			this->is_negative = true;
-			idx++;
-		}
-
-		for(;idx < str.size(); idx++){
-			int dig = ((int)str.at(idx)) - '0';
-			this->digits->push_back(dig);
-		}
+	digits -> clear();
+	size_t idx = 0;
+	if (!str.empty() && str.at(0) == '-'){
+		is_negative = true;
+		idx = 1;
+	}
+	for (; idx < str.size(); idx++){
+		int dig = str.at(idx) - '0';
+		digits -> push_back(dig);
 	}
 }
 
